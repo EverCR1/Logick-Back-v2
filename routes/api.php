@@ -14,12 +14,22 @@ use App\Http\Controllers\VentaController;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\SucursalController;
+use App\Http\Controllers\Tienda\ProductoController as TiendaProductoController;
 
 /*
 |--------------------------------------------------------------------------
 | API Routes — Logick-Back v2 (Laravel 11 / PHP 8.3)
 |--------------------------------------------------------------------------
 */
+
+// ── Rutas públicas Tienda (sin autenticación) ──────────────────────────────
+Route::prefix('tienda')->group(function () {
+    Route::get('/productos',             [TiendaProductoController::class, 'index']);
+    Route::get('/productos/buscar',      [TiendaProductoController::class, 'buscar']);
+    Route::get('/productos/destacados',  [TiendaProductoController::class, 'destacados']);
+    Route::get('/productos/ofertas',     [TiendaProductoController::class, 'ofertas']);
+    Route::get('/productos/{id}',        [TiendaProductoController::class, 'show']);
+});
 
 // Rutas públicas
 Route::post('/login',    [AuthController::class, 'login']);

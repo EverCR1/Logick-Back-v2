@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use App\Traits\Auditable;
+use App\Models\VentaDetalle;
 
 class Producto extends Model
 {
@@ -44,6 +45,11 @@ class Producto extends Model
     public function imagenPrincipal()
     {
         return $this->hasOne(ImagenProducto::class)->where('es_principal', true);
+    }
+
+    public function ventaDetalles()
+    {
+        return $this->hasMany(VentaDetalle::class);
     }
 
     public function scopeActivos($query)
