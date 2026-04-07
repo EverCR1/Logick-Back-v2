@@ -251,12 +251,14 @@ class ProductoController extends Controller
     private function imagenPrincipal(Producto $producto): ?string
     {
         if ($producto->relationLoaded('imagenPrincipal') && $producto->imagenPrincipal) {
-            return $producto->imagenPrincipal->url_thumb ?? $producto->imagenPrincipal->url;
+            $img = $producto->imagenPrincipal;
+            return $img->url_thumb ?? $img->url_medium ?? $img->url;
         }
 
         if ($producto->relationLoaded('imagenes') && $producto->imagenes->isNotEmpty()) {
-            $principal = $producto->imagenes->firstWhere('es_principal', true);
-            return ($principal ?? $producto->imagenes->first())?->url_thumb;
+            $principal = $producto->imagenes->firstWhere('es_principal', true)
+                      ?? $producto->imagenes->first();
+            return $principal->url_thumb ?? $principal->url_medium ?? $principal->url;
         }
 
         return null;
