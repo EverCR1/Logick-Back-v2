@@ -37,7 +37,7 @@ class PasswordResetController extends Controller
             'created_at' => Carbon::now(),
         ]);
 
-        $resetUrl = config('app.frontend_url') . '/password/reset/' . $token . '?email=' . urlencode($user->email);
+        $resetUrl = config('app.dashboard_url') . '/password/reset/' . $token . '?email=' . urlencode($user->email);
 
         Mail::to($user->email)->send(new PasswordResetMail($user, $resetUrl));
 

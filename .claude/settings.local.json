@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Pc/.claude/projects/c--Users-Pc-Desktop-Code-Logick-Logick-Back/memory/**)",
+      "Read(//c/Users/Pc/Desktop/Code Logick/**)",
+      "Bash(ls \"C:/Users/Pc/Desktop/Code Logick/Logick-Back-v2/database/migrations/2026_04_10\"*)"
+    ]
+  }
+}

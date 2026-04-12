@@ -32,12 +32,7 @@ class ProductoController extends Controller
             ->where('estado', 'activo');
 
             if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('nombre',      'LIKE', "%{$search}%")
-                      ->orWhere('marca',     'LIKE', "%{$search}%")
-                      ->orWhere('descripcion','LIKE', "%{$search}%");
-                });
+                $this->aplicarBusqueda($query, $request->search);
             }
 
             if ($request->filled('categoria_id')) {
@@ -61,10 +56,15 @@ class ProductoController extends Controller
             }
 
             match ($request->get('sort', 'nombre_asc')) {
-                'precio_asc'  => $query->orderBy('precio_venta', 'asc'),
-                'precio_desc' => $query->orderBy('precio_venta', 'desc'),
-                'nuevos'      => $query->orderBy('created_at', 'desc'),
-                default       => $query->orderBy('nombre', 'asc'),
+                'precio_asc'    => $query->orderBy('precio_venta', 'asc'),
+                'precio_desc'   => $query->orderBy('precio_venta', 'desc'),
+                'nuevos'        => $query->orderBy('created_at', 'desc'),
+                'nombre_desc'   => $query->orderBy('nombre', 'desc'),
+                'mejor_rating'  => $query
+                    ->withAvg(['resenas' => fn($q) => $q->where('estado', 'publicado')], 'rating')
+                    ->orderByRaw('resenas_avg_rating IS NULL ASC, resenas_avg_rating DESC')
+                    ->orderBy('nombre', 'asc'),
+                default         => $query->orderBy('nombre', 'asc'),
             };
 
             $productos = $query->paginate($request->get('per_page', 20));
@@ -101,9 +101,31 @@ class ProductoController extends Controller
                 return response()->json(['success' => false, 'message' => 'Producto no encontrado'], 404);
             }
 
+            // Variantes de color del mismo grupo
+            $variantes = [];
+            if ($producto->grupo_variante) {
+                $variantes = Producto::with(['imagenPrincipal' => fn($q) => $q->select([
+                    'id', 'producto_id', 'url_thumb', 'url_medium', 'url', 'es_principal',
+                ])])
+                ->where('estado', 'activo')
+                ->where('grupo_variante', $producto->grupo_variante)
+                ->where('id', '!=', $producto->id)
+                ->get()
+                ->map(fn($v) => [
+                    'id'               => $v->id,
+                    'color'            => $v->color,
+                    'precio_venta'     => (float) $v->precio_venta,
+                    'precio_oferta'    => $v->precio_oferta ? (float) $v->precio_oferta : null,
+                    'en_oferta'        => !is_null($v->precio_oferta),
+                    'imagen_principal' => $this->imagenPrincipal($v),
+                ])
+                ->values()
+                ->all();
+            }
+
             return response()->json([
                 'success'  => true,
-                'producto' => $this->formatearProducto($producto, detalle: true),
+                'producto' => $this->formatearProducto($producto, true, $variantes),
             ]);
 
         } catch (\Exception $e) {
@@ -124,17 +146,14 @@ class ProductoController extends Controller
         }
 
         try {
-            $productos = Producto::with(['imagenPrincipal' => fn($q) => $q->select([
+            $builder = Producto::with(['imagenPrincipal' => fn($q) => $q->select([
                 'id', 'producto_id', 'url_thumb', 'es_principal',
             ])])
-            ->where('estado', 'activo')
-            ->where(function ($query) use ($q) {
-                $query->where('nombre', 'LIKE', "%{$q}%")
-                      ->orWhere('marca', 'LIKE', "%{$q}%");
-            })
-            ->orderBy('nombre')
-            ->limit(10)
-            ->get();
+            ->where('estado', 'activo');
+
+            $this->aplicarBusqueda($builder, $q);
+
+            $productos = $builder->orderBy('nombre')->limit(10)->get();
 
             return response()->json([
                 'success'   => true,
@@ -145,7 +164,7 @@ class ProductoController extends Controller
                     'precio_final' => $p->precio_final,
                     'en_oferta'    => !is_null($p->precio_oferta),
                     'disponible'   => $p->stock > 0,
-                    'imagen'       => $p->imagenPrincipal?->url_thumb,
+                    'imagen_principal' => $p->imagenPrincipal?->url_thumb,
                 ]),
             ]);
 
@@ -208,10 +227,47 @@ class ProductoController extends Controller
     }
 
     /**
+     * Aplica búsqueda multi-palabra sobre los campos públicos.
+     * Cada palabra debe coincidir en al menos un campo (AND entre palabras, OR entre campos).
+     * Ej: "Monitor Negro" → encuentra productos donde "Monitor" aparece en algún campo
+     *     Y "Negro" aparece en algún campo.
+     */
+    /**
+     * Aplica búsqueda multi-palabra sobre los campos públicos.
+     * Cada palabra debe coincidir en al menos un campo (AND entre palabras, OR entre campos).
+     *
+     * Manejo de género en español: si la palabra termina en 'o' o 'a' y tiene
+     * 4+ caracteres, busca por la raíz sin la vocal final para que "Rojo" y "Roja"
+     * ambos encuentren el mismo producto independientemente de cómo esté guardado.
+     * Ej: "roja" → raíz "roj" → LIKE "%roj%" → coincide con "Rojo", "Roja", "Rojos", "Rojas"
+     */
+    private function aplicarBusqueda($query, string $texto): void
+    {
+        $palabras = array_filter(explode(' ', preg_replace('/\s+/', ' ', trim($texto))));
+
+        foreach ($palabras as $palabra) {
+            $termino = mb_strtolower($palabra);
+
+            // Si termina en vocal de género (o/a) y tiene suficiente longitud, usar raíz
+            if (mb_strlen($termino) >= 4 && preg_match('/[oa]$/i', $termino)) {
+                $termino = mb_substr($termino, 0, -1); // "rojo" → "roj", "roja" → "roj"
+            }
+
+            $like = "%{$termino}%";
+            $query->where(function ($q) use ($like) {
+                $q->where('nombre',        'LIKE', $like)
+                  ->orWhere('marca',       'LIKE', $like)
+                  ->orWhere('color',       'LIKE', $like)
+                  ->orWhere('descripcion', 'LIKE', $like);
+            });
+        }
+    }
+
+    /**
      * Formatea un producto para respuesta pública.
      * Nunca expone campos internos.
      */
-    private function formatearProducto(Producto $producto, bool $detalle = false): array
+    private function formatearProducto(Producto $producto, bool $detalle = false, array $variantes = []): array
     {
         $data = [
             'id'           => $producto->id,
@@ -223,6 +279,7 @@ class ProductoController extends Controller
             'precio_final' => (float) $producto->precio_final,
             'en_oferta'    => !is_null($producto->precio_oferta),
             'disponible'   => $producto->stock > 0,
+            'stock'        => (int) $producto->stock,
             'garantia'     => $producto->garantia,
             'categorias'   => $producto->relationLoaded('categorias')
                 ? $producto->categorias->map(fn($c) => ['id' => $c->id, 'nombre' => $c->nombre])
@@ -243,6 +300,7 @@ class ProductoController extends Controller
         if ($detalle) {
             $data['descripcion']      = $producto->descripcion;
             $data['especificaciones'] = $producto->especificaciones;
+            $data['variantes_color']  = $variantes;
         }
 
         return $data;

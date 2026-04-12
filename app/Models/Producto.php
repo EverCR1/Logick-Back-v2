@@ -15,7 +15,7 @@ class Producto extends Model
         'sku', 'nombre', 'descripcion', 'especificaciones', 'marca', 'color',
         'proveedor_id', 'precio_compra', 'precio_venta', 'precio_oferta',
         'estado', 'stock', 'stock_minimo', 'codigo_barras', 'ubicacion',
-        'notas_internas', 'garantia',
+        'notas_internas', 'garantia', 'grupo_variante',
     ];
 
     protected $casts = [
@@ -50,6 +50,16 @@ class Producto extends Model
     public function ventaDetalles()
     {
         return $this->hasMany(VentaDetalle::class);
+    }
+
+    public function resenas()
+    {
+        return $this->hasMany(Resena::class);
+    }
+
+    public function preguntas()
+    {
+        return $this->hasMany(ProductoPregunta::class);
     }
 
     public function scopeActivos($query)

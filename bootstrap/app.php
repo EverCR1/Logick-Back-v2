@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role'        => \App\Http\Middleware\CheckRole::class,
             'imgbb.limit' => \App\Http\Middleware\CheckImgBBLimit::class,
+            'auth.cuenta' => \App\Http\Middleware\AuthCuenta::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
