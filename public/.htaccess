@@ -1,3 +1,7 @@
+<IfModule mod_security2.c>
+    SecRuleRemoveById 210580
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
