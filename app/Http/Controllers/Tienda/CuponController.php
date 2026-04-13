@@ -29,10 +29,10 @@ class CuponController extends Controller
         $cupon = Cupon::where('codigo', strtoupper(trim($data['codigo'])))->first();
 
         if (!$cupon || !$cupon->estaVigente()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Este cupón no es válido o ha expirado.',
-            ], 422);
+            $msg = ($cupon && $cupon->mensaje_error)
+                ? $cupon->mensaje_error
+                : 'Este cupón no es válido o ha expirado.';
+            return response()->json(['success' => false, 'message' => $msg], 422);
         }
 
         // Verificar mínimo de compra
@@ -68,10 +68,8 @@ class CuponController extends Controller
 
             // Solo primera compra
             if ($cupon->solo_primera_compra && $cuenta->pedidos()->exists()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Este cupón es exclusivo para tu primera compra.',
-                ], 422);
+                $msg = $cupon->mensaje_error ?? 'Este cupón es exclusivo para tu primera compra.';
+                return response()->json(['success' => false, 'message' => $msg], 422);
             }
         } elseif (!$cupon->es_publico) {
             // Cupón privado pero sin sesión

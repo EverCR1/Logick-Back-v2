@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Tienda;
 
 use App\Http\Controllers\Controller;
+use App\Mail\PedidoConfirmacionMail;
 use App\Models\Cuenta;
 use App\Models\Cupon;
 use App\Models\Pedido;
@@ -14,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class PedidoController extends Controller
@@ -161,6 +163,13 @@ class PedidoController extends Controller
             }
 
             DB::commit();
+
+            // ── Enviar correo de confirmación al cliente ───────────────
+            try {
+                Mail::to($pedido->email)->send(new PedidoConfirmacionMail($pedido));
+            } catch (\Exception $e) {
+                Log::warning('PedidoController@store — no se pudo enviar email: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'success'            => true,

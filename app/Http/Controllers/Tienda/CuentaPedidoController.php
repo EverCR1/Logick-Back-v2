@@ -30,16 +30,17 @@ class CuentaPedidoController extends Controller
     }
 
     /**
-     * GET /tienda/cuenta/pedidos/{id}
+     * GET /tienda/cuenta/pedidos/{numero}
      */
-    public function show(Request $request, int $id): JsonResponse
+    public function show(Request $request, string $numero): JsonResponse
     {
         $pedido = $request->user()
             ->pedidos()
             ->with([
                 'detalles.producto.imagenPrincipal',
             ])
-            ->findOrFail($id);
+            ->where('numero_pedido', $numero)
+            ->firstOrFail();
 
         return response()->json([
             'success' => true,

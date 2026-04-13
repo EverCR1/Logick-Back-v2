@@ -15,6 +15,7 @@ class Cupon extends Model
         'usos_maximos', 'usos_actuales', 'usos_por_cuenta',
         'solo_primera_compra', 'es_publico',
         'fecha_inicio', 'fecha_vencimiento', 'estado',
+        'mensaje_error',
     ];
 
     protected $casts = [

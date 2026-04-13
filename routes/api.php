@@ -16,6 +16,7 @@ use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\SucursalController;
 use App\Http\Controllers\AdminPedidoController;
 use App\Http\Controllers\AdminResenaController;
+use App\Http\Controllers\AdminCuponController;
 use App\Http\Controllers\CuentaPuntosController;
 use App\Http\Controllers\Tienda\ProductoController        as TiendaProductoController;
 use App\Http\Controllers\Tienda\CategoriaController       as TiendaCategoriaController;
@@ -85,8 +86,8 @@ Route::prefix('tienda')->group(function () {
     Route::prefix('cuenta')->middleware('auth.cuenta')->group(function () {
 
         // Pedidos
-        Route::get('/pedidos',      [TiendaCuentaPedidoController::class, 'index']);
-        Route::get('/pedidos/{id}', [TiendaCuentaPedidoController::class, 'show']);
+        Route::get('/pedidos',          [TiendaCuentaPedidoController::class, 'index']);
+        Route::get('/pedidos/{numero}', [TiendaCuentaPedidoController::class, 'show']);
 
         // Direcciones
         Route::get('/direcciones',                    [TiendaCuentaDireccionController::class, 'index']);
@@ -233,9 +234,20 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Pedidos tienda (admin/vendedor)
     Route::middleware('role:administrador,vendedor')->prefix('pedidos-tienda')->group(function () {
+        Route::get('/estadisticas',   [AdminPedidoController::class, 'estadisticas']);
         Route::get('/',               [AdminPedidoController::class, 'index']);
         Route::get('/{id}',           [AdminPedidoController::class, 'show']);
         Route::patch('/{id}/estado',  [AdminPedidoController::class, 'cambiarEstado']);
+    });
+
+    // Cupones (solo administrador)
+    Route::middleware('role:administrador')->prefix('admin/cupones')->group(function () {
+        Route::get('/',               [AdminCuponController::class, 'index']);
+        Route::post('/',              [AdminCuponController::class, 'store']);
+        Route::get('/{id}',           [AdminCuponController::class, 'show']);
+        Route::put('/{id}',           [AdminCuponController::class, 'update']);
+        Route::delete('/{id}',        [AdminCuponController::class, 'destroy']);
+        Route::patch('/{id}/estado',  [AdminCuponController::class, 'toggleEstado']);
     });
 
     // Reseñas y preguntas (admin/vendedor)
@@ -257,6 +269,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/servicios-mas-realizados', [ReporteController::class, 'serviciosMasRealizados'])->name('servicios-mas-realizados');
         Route::get('/sucursales',               [ReporteController::class, 'sucursales'])->name('sucursales');
         Route::get('/ganancias',                [ReporteController::class, 'ganancias'])->name('ganancias');
+        Route::get('/tienda-pedidos',           [ReporteController::class, 'tiendaPedidos'])->name('tienda-pedidos');
         Route::post('/exportar',                [ReporteController::class, 'exportar'])->name('exportar');
     });
 

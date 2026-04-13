@@ -57,11 +57,11 @@ class Pedido extends Model
     // ── Helpers ─────────────────────────────────────────────────────────────
 
     /**
-     * Genera un número de pedido único: PED-YYYYMM-XXXX
+     * Genera un número de pedido único: PD-YYYYMM-XXXX
      */
     public static function generarNumero(): string
     {
-        $prefijo = 'PED-' . now()->format('Ym') . '-';
+        $prefijo = 'PD-' . now()->format('Ym') . '-';
         $ultimo  = static::where('numero_pedido', 'like', $prefijo . '%')
                          ->orderByDesc('id')
                          ->value('numero_pedido');

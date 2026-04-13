@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\Pedido;
+use App\Models\PedidoDetalle;
 use App\Models\Producto;
 use App\Models\Sucursal;
 use App\Models\User;
@@ -417,6 +419,50 @@ class ReporteController extends Controller
         } catch (\Exception $e) {
             Log::error('Error en reporte ganancias: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Error al generar reporte de ganancias'], 500);
+        }
+    }
+
+    /**
+     * GET /reportes/tienda-pedidos
+     * Reporte de pedidos de la tienda con filtros.
+     */
+    public function tiendaPedidos(Request $request)
+    {
+        try {
+            $fechaInicio = $request->get('fecha_inicio', now()->startOfMonth()->format('Y-m-d'));
+            $fechaFin    = $request->get('fecha_fin',    now()->endOfMonth()->format('Y-m-d'));
+            $estado      = $request->get('estado');
+            $metodoPago  = $request->get('metodo_pago');
+
+            $query = Pedido::with(['cuenta:id,nombre,apellido,email', 'detalles'])
+                ->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
+
+            if ($estado)     $query->where('estado',      $estado);
+            if ($metodoPago) $query->where('metodo_pago', $metodoPago);
+
+            $pedidos = $query->orderByDesc('created_at')->get();
+
+            $resumen = [
+                'total_pedidos'   => $pedidos->count(),
+                'monto_total'     => round($pedidos->sum('total'), 2),
+                'promedio'        => round($pedidos->avg('total') ?? 0, 2),
+                'pedido_maximo'   => round($pedidos->max('total') ?? 0, 2),
+                'por_estado'      => $pedidos->groupBy('estado')
+                    ->map(fn($g) => ['cantidad' => $g->count(), 'total' => round($g->sum('total'), 2)]),
+                'por_metodo_pago' => $pedidos->groupBy('metodo_pago')
+                    ->map(fn($g) => ['cantidad' => $g->count(), 'total' => round($g->sum('total'), 2)]),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'pedidos' => $pedidos,
+                'resumen' => $resumen,
+                'filtros' => ['fecha_inicio' => $fechaInicio, 'fecha_fin' => $fechaFin],
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('ReporteController@tiendaPedidos: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al generar reporte de tienda'], 500);
         }
     }
 

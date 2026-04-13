@@ -4,6 +4,15 @@
       "Read(//c/Users/Pc/.claude/projects/c--Users-Pc-Desktop-Code-Logick-Logick-Back/memory/**)",
       "Read(//c/Users/Pc/Desktop/Code Logick/**)",
       "Bash(ls \"C:/Users/Pc/Desktop/Code Logick/Logick-Back-v2/database/migrations/2026_04_10\"*)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Pc\\Desktop\\Code Logick\\Logick-Dash-v2\\app\\Services",
+      "C:\\Users\\Pc\\Desktop\\Code Logick\\Logick-Dash-v2\\app\\Http\\Controllers",
+      "C:\\Users\\Pc\\Desktop\\Code Logick\\Logick-Dash-v2\\resources\\views",
+      "C:\\Users\\Pc\\Desktop\\Code Logick\\Logick-Dash-v2\\routes",
+      "C:\\Users\\Pc\\Desktop\\Code Logick\\logick-store\\src\\app\\cuenta\\pedidos",
+      "C:\\Users\\Pc\\Desktop\\Code Logick\\logick-store\\src\\components\\layout",
+      "C:\\Users\\Pc\\Desktop\\Code Logick\\logick-store\\src\\app"
     ]
   }
 }

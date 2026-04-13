@@ -12,9 +12,6 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Sanctum: marcar el frontend como dominio stateful
-        $middleware->statefulApi();
-
         // CORS — orígenes permitidos (frontend Dash)
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
         $middleware->trustHosts(at: ['localhost', '127.0.0.1']);
