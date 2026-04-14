@@ -44,7 +44,7 @@ class Producto extends Model
 
     public function imagenPrincipal()
     {
-        return $this->hasOne(ImagenProducto::class)->where('es_principal', true);
+        return $this->hasOne(ImagenProducto::class)->orderByDesc('es_principal');
     }
 
     public function ventaDetalles()
