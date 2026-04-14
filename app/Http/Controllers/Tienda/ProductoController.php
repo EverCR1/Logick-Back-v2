@@ -146,9 +146,9 @@ class ProductoController extends Controller
         }
 
         try {
-            $builder = Producto::with(['imagenPrincipal' => fn($q) => $q->select([
-                'id', 'producto_id', 'url_thumb', 'es_principal',
-            ])])
+            $builder = Producto::with(['imagenes' => fn($q) => $q->select([
+                'id', 'producto_id', 'url', 'url_thumb', 'url_medium', 'es_principal', 'orden',
+            ])->orderBy('orden')])
             ->where('estado', 'activo');
 
             $this->aplicarBusqueda($builder, $q);
@@ -164,7 +164,7 @@ class ProductoController extends Controller
                     'precio_final' => $p->precio_final,
                     'en_oferta'    => !is_null($p->precio_oferta),
                     'disponible'   => $p->stock > 0,
-                    'imagen_principal' => $p->imagenPrincipal?->url_thumb,
+                    'imagen_principal' => $this->imagenPrincipal($p),
                 ]),
             ]);
 
@@ -180,9 +180,9 @@ class ProductoController extends Controller
     public function destacados()
     {
         try {
-            $productos = Producto::with(['imagenPrincipal' => fn($q) => $q->select([
-                'id', 'producto_id', 'url', 'url_thumb', 'es_principal',
-            ])])
+            $productos = Producto::with(['imagenes' => fn($q) => $q->select([
+                'id', 'producto_id', 'url', 'url_thumb', 'url_medium', 'es_principal', 'orden',
+            ])->orderBy('orden')])
             ->where('estado', 'activo')
             ->withCount(['ventaDetalles as veces_vendido'])
             ->orderBy('veces_vendido', 'desc')
@@ -206,9 +206,9 @@ class ProductoController extends Controller
     public function ofertas(Request $request)
     {
         try {
-            $productos = Producto::with(['imagenPrincipal' => fn($q) => $q->select([
-                'id', 'producto_id', 'url', 'url_thumb', 'es_principal',
-            ])])
+            $productos = Producto::with(['imagenes' => fn($q) => $q->select([
+                'id', 'producto_id', 'url', 'url_thumb', 'url_medium', 'es_principal', 'orden',
+            ])->orderBy('orden')])
             ->where('estado', 'activo')
             ->whereNotNull('precio_oferta')
             ->orderBy('nombre')
