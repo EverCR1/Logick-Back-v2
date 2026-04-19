@@ -32,15 +32,19 @@ class ProductoController extends Controller
             ->where('estado', 'activo');
 
             if ($request->filled('search')) {
-                $this->aplicarBusqueda($query, $request->search);
+                $this->aplicarBusqueda($query, $request->search, $request->boolean('search_desc'));
             }
 
             if ($request->filled('categoria_id')) {
-                $query->whereHas('categorias', fn($q) => $q->where('categorias.id', $request->categoria_id));
+                $ids = array_filter(array_map('intval', explode(',', $request->categoria_id)));
+                $query->whereHas('categorias', fn($q) => $q->whereIn('categorias.id', $ids));
             }
 
             if ($request->filled('marca')) {
-                $query->where('marca', $request->marca);
+                $marcas = array_filter(array_map('trim', explode(',', $request->marca)));
+                count($marcas) === 1
+                    ? $query->where('marca', $marcas[0])
+                    : $query->whereIn('marca', $marcas);
             }
 
             if ($request->filled('precio_min')) {
@@ -54,6 +58,16 @@ class ProductoController extends Controller
             if ($request->boolean('solo_ofertas')) {
                 $query->whereNotNull('precio_oferta');
             }
+
+            if ($request->filled('stock')) {
+                match ($request->stock) {
+                    'disponible' => $query->where('stock', '>', 0),
+                    'agotado'    => $query->where('stock', '<=', 0),
+                    default      => null,
+                };
+            }
+
+            $query->orderByRaw('(stock > 0) DESC');
 
             match ($request->get('sort', 'nombre_asc')) {
                 'precio_asc'    => $query->orderBy('precio_venta', 'asc'),
@@ -93,6 +107,7 @@ class ProductoController extends Controller
                 'imagenes' => fn($q) => $q->select([
                     'id', 'producto_id', 'url', 'url_thumb', 'url_medium', 'es_principal', 'orden',
                 ])->orderBy('orden'),
+                'atributos',
             ])
             ->where('estado', 'activo')
             ->find($id);
@@ -101,12 +116,15 @@ class ProductoController extends Controller
                 return response()->json(['success' => false, 'message' => 'Producto no encontrado'], 404);
             }
 
-            // Variantes de color del mismo grupo
+            // Variantes del mismo grupo
             $variantes = [];
             if ($producto->grupo_variante) {
-                $variantes = Producto::with(['imagenPrincipal' => fn($q) => $q->select([
-                    'id', 'producto_id', 'url_thumb', 'url_medium', 'url', 'es_principal',
-                ])])
+                $variantes = Producto::with([
+                    'imagenPrincipal' => fn($q) => $q->select([
+                        'id', 'producto_id', 'url_thumb', 'url_medium', 'url', 'es_principal',
+                    ]),
+                    'atributos',
+                ])
                 ->where('estado', 'activo')
                 ->where('grupo_variante', $producto->grupo_variante)
                 ->where('id', '!=', $producto->id)
@@ -114,6 +132,7 @@ class ProductoController extends Controller
                 ->map(fn($v) => [
                     'id'               => $v->id,
                     'color'            => $v->color,
+                    'atributos'        => $v->atributos->map(fn($a) => ['nombre' => $a->nombre, 'valor' => $a->valor])->values()->all(),
                     'precio_venta'     => (float) $v->precio_venta,
                     'precio_oferta'    => $v->precio_oferta ? (float) $v->precio_oferta : null,
                     'en_oferta'        => !is_null($v->precio_oferta),
@@ -185,6 +204,7 @@ class ProductoController extends Controller
             ])->orderBy('orden')])
             ->where('estado', 'activo')
             ->withCount(['ventaDetalles as veces_vendido'])
+            ->orderByRaw('(stock > 0) DESC')
             ->orderBy('veces_vendido', 'desc')
             ->limit(8)
             ->get();
@@ -211,6 +231,7 @@ class ProductoController extends Controller
             ])->orderBy('orden')])
             ->where('estado', 'activo')
             ->whereNotNull('precio_oferta')
+            ->orderByRaw('(stock > 0) DESC')
             ->orderBy('nombre')
             ->paginate($request->get('per_page', 20));
 
@@ -241,7 +262,7 @@ class ProductoController extends Controller
      * ambos encuentren el mismo producto independientemente de cómo esté guardado.
      * Ej: "roja" → raíz "roj" → LIKE "%roj%" → coincide con "Rojo", "Roja", "Rojos", "Rojas"
      */
-    private function aplicarBusqueda($query, string $texto): void
+    private function aplicarBusqueda($query, string $texto, bool $conDescripcion = false): void
     {
         $palabras = array_filter(explode(' ', preg_replace('/\s+/', ' ', trim($texto))));
 
@@ -254,11 +275,13 @@ class ProductoController extends Controller
             }
 
             $like = "%{$termino}%";
-            $query->where(function ($q) use ($like) {
-                $q->where('nombre',        'LIKE', $like)
-                  ->orWhere('marca',       'LIKE', $like)
-                  ->orWhere('color',       'LIKE', $like)
-                  ->orWhere('descripcion', 'LIKE', $like);
+            $query->where(function ($q) use ($like, $conDescripcion) {
+                $q->where('nombre', 'LIKE', $like)
+                  ->orWhere('marca', 'LIKE', $like)
+                  ->orWhere('color', 'LIKE', $like);
+                if ($conDescripcion) {
+                    $q->orWhere('descripcion', 'LIKE', $like);
+                }
             });
         }
     }
@@ -300,7 +323,11 @@ class ProductoController extends Controller
         if ($detalle) {
             $data['descripcion']      = $producto->descripcion;
             $data['especificaciones'] = $producto->especificaciones;
-            $data['variantes_color']  = $variantes;
+            $data['grupo_variante']   = $producto->grupo_variante;
+            $data['atributos']        = $producto->relationLoaded('atributos')
+                ? $producto->atributos->map(fn($a) => ['nombre' => $a->nombre, 'valor' => $a->valor])->values()->all()
+                : [];
+            $data['variantes']        = $variantes;
         }
 
         return $data;

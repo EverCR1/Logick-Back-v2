@@ -26,7 +26,7 @@ class ResenaController extends Controller
                 'id'           => $r->id,
                 'rating'       => $r->rating,
                 'comentario'   => $r->comentario,
-                'autor'        => $r->cuenta->nombre . ' ' . substr($r->cuenta->apellido, 0, 1) . '.',
+                'autor'        => trim($r->cuenta->nombre . ' ' . ($r->cuenta->apellido ?? '')),
                 'created_at'   => $r->created_at->format('d/m/Y'),
             ]);
 

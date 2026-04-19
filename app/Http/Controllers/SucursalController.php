@@ -42,9 +42,15 @@ class SucursalController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nombre'    => 'required|string|max:150|unique:sucursales,nombre',
-            'direccion' => 'nullable|string|max:255',
-            'telefono'  => 'nullable|string|max:20',
+            'nombre'       => 'required|string|max:150|unique:sucursales,nombre',
+            'direccion'    => 'nullable|string|max:255',
+            'municipio'    => 'nullable|string|max:100',
+            'departamento' => 'nullable|string|max:100',
+            'referencia'   => 'nullable|string|max:255',
+            'horario'      => 'nullable|string|max:150',
+            'lat'          => 'nullable|numeric|between:-90,90',
+            'lng'          => 'nullable|numeric|between:-180,180',
+            'telefono'     => 'nullable|string|max:20',
         ]);
 
         if ($validator->fails()) {
@@ -56,10 +62,16 @@ class SucursalController extends Controller
         }
 
         $sucursal = Sucursal::create([
-            'nombre'    => $request->nombre,
-            'direccion' => $request->direccion,
-            'telefono'  => $request->telefono,
-            'estado'    => 'activo',
+            'nombre'       => $request->nombre,
+            'direccion'    => $request->direccion,
+            'municipio'    => $request->municipio,
+            'departamento' => $request->departamento,
+            'referencia'   => $request->referencia,
+            'horario'      => $request->horario,
+            'lat'          => $request->lat,
+            'lng'          => $request->lng,
+            'telefono'     => $request->telefono,
+            'estado'       => 'activo',
         ]);
 
         return response()->json([
@@ -93,10 +105,16 @@ class SucursalController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'nombre'    => 'sometimes|string|max:150|unique:sucursales,nombre,' . $id,
-            'direccion' => 'nullable|string|max:255',
-            'telefono'  => 'nullable|string|max:20',
-            'estado'    => 'sometimes|in:activo,inactivo',
+            'nombre'       => 'sometimes|string|max:150|unique:sucursales,nombre,' . $id,
+            'direccion'    => 'nullable|string|max:255',
+            'municipio'    => 'nullable|string|max:100',
+            'departamento' => 'nullable|string|max:100',
+            'referencia'   => 'nullable|string|max:255',
+            'horario'      => 'nullable|string|max:150',
+            'lat'          => 'nullable|numeric|between:-90,90',
+            'lng'          => 'nullable|numeric|between:-180,180',
+            'telefono'     => 'nullable|string|max:20',
+            'estado'       => 'sometimes|in:activo,inactivo',
         ]);
 
         if ($validator->fails()) {
@@ -107,7 +125,10 @@ class SucursalController extends Controller
             ], 422);
         }
 
-        $sucursal->update($request->only(['nombre', 'direccion', 'telefono', 'estado']));
+        $sucursal->update($request->only([
+            'nombre', 'direccion', 'municipio', 'departamento',
+            'referencia', 'horario', 'lat', 'lng', 'telefono', 'estado',
+        ]));
 
         return response()->json([
             'success'  => true,

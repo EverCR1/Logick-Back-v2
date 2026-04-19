@@ -40,16 +40,17 @@ class PedidoController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'nombre'       => 'required|string|max:150',
-            'telefono'     => 'required|string|max:20',
-            'email'        => 'required|email|max:150',
-            'departamento' => 'required|string|max:100',
-            'municipio'    => 'required|string|max:100',
-            'direccion'    => 'required|string|max:255',
-            'referencias'  => 'nullable|string|max:255',
-            'metodo_pago'  => 'required|in:efectivo,deposito_transferencia,tarjeta,mixto',
-            'notas'        => 'nullable|string|max:500',
-            'cupon_codigo' => 'nullable|string|max:30',
+            'nombre'        => 'required|string|max:150',
+            'telefono'      => 'required|string|max:20',
+            'email'         => 'required|email|max:150',
+            'tipo_entrega'  => 'nullable|in:domicilio,tienda',
+            'departamento'  => 'required|string|max:100',
+            'municipio'     => 'required|string|max:100',
+            'direccion'     => 'required|string|max:255',
+            'referencias'   => 'nullable|string|max:255',
+            'metodo_pago'   => 'required|in:efectivo,deposito_transferencia,tarjeta,mixto',
+            'notas'         => 'nullable|string|max:500',
+            'cupon_codigo'  => 'nullable|string|max:30',
             'items'            => 'required|array|min:1',
             'items.*.id'       => 'required|integer',
             'items.*.cantidad' => 'required|integer|min:1',
@@ -67,11 +68,12 @@ class PedidoController extends Controller
             DB::beginTransaction();
 
             // ── Verificar productos y calcular subtotal ───────────────────
-            $subtotal = 0;
-            $detalles = [];
+            $subtotal  = 0;
+            $detalles  = [];
+            $itemsStock = [];   // guardamos instancias para descontar stock después
 
             foreach ($request->items as $item) {
-                $producto = Producto::where('estado', 'activo')->find($item['id']);
+                $producto = Producto::where('estado', 'activo')->lockForUpdate()->find($item['id']);
 
                 if (!$producto) {
                     DB::rollBack();
@@ -81,20 +83,34 @@ class PedidoController extends Controller
                     ], 422);
                 }
 
+                $cantidad = (int) $item['cantidad'];
+
+                if ($producto->stock < $cantidad) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Stock insuficiente para \"{$producto->nombre}\" (disponible: {$producto->stock})",
+                    ], 422);
+                }
+
                 $precio    = (float) ($producto->precio_oferta ?? $producto->precio_venta);
-                $itemTotal = round($precio * (int) $item['cantidad'], 2);
+                $itemTotal = round($precio * $cantidad, 2);
                 $subtotal += $itemTotal;
 
-                $detalles[] = [
+                $detalles[]   = [
                     'producto_id'     => $producto->id,
                     'nombre_producto' => $producto->nombre,
                     'precio_unitario' => $precio,
-                    'cantidad'        => (int) $item['cantidad'],
+                    'cantidad'        => $cantidad,
                     'subtotal'        => $itemTotal,
                 ];
+                $itemsStock[] = ['modelo' => $producto, 'cantidad' => $cantidad];
             }
 
-            $costoEnvio = $subtotal >= self::MINIMO_ENVIO_GRATIS ? 0 : self::COSTO_ENVIO_BASE;
+            $tipoEntrega = $request->input('tipo_entrega', 'domicilio');
+            $costoEnvio  = $tipoEntrega === 'tienda'
+                ? 0
+                : ($subtotal >= self::MINIMO_ENVIO_GRATIS ? 0 : self::COSTO_ENVIO_BASE);
 
             // ── Aplicar cupón (opcional) ──────────────────────────────────
             $cupon          = null;
@@ -131,12 +147,13 @@ class PedidoController extends Controller
                 'cliente_id'    => null,
                 'cuenta_id'      => $cuentaId,
                 'cupon_id'       => $cupon?->id,
-                'descuento_cupon'=> $descuentoCupon,
-                'departamento'   => $request->departamento,
-                'municipio'     => $request->municipio,
-                'direccion'     => $request->direccion,
-                'referencias'   => $request->referencias,
-                'metodo_pago'   => $request->metodo_pago,
+                'descuento_cupon' => $descuentoCupon,
+                'tipo_entrega'    => $tipoEntrega,
+                'departamento'    => $request->departamento,
+                'municipio'       => $request->municipio,
+                'direccion'       => $request->direccion,
+                'referencias'     => $request->referencias,
+                'metodo_pago'     => $request->metodo_pago,
                 'notas'         => $request->notas,
                 'subtotal'      => $subtotal,
                 'costo_envio'   => $costoEnvio,
@@ -160,6 +177,11 @@ class PedidoController extends Controller
                         $cupon->cuentas()->attach($cuentaId, ['usos' => 1]);
                     }
                 }
+            }
+
+            // Descontar stock de cada producto (dentro de la transacción)
+            foreach ($itemsStock as $entry) {
+                $entry['modelo']->decrement('stock', $entry['cantidad']);
             }
 
             DB::commit();

@@ -13,7 +13,11 @@ class ProductoController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Producto::with(['proveedor', 'categorias', 'imagenes']);
+            $with = ['proveedor', 'categorias', 'imagenes'];
+            if ($request->filled('grupo_variante')) {
+                $with[] = 'atributos';
+            }
+            $query = Producto::with($with);
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -37,6 +41,10 @@ class ProductoController extends Controller
 
             if ($request->filled('categoria_id')) {
                 $query->whereHas('categorias', fn($q) => $q->where('categorias.id', $request->categoria_id));
+            }
+
+            if ($request->filled('grupo_variante')) {
+                $query->where('grupo_variante', $request->grupo_variante);
             }
 
             if ($request->filled('stock')) {
@@ -79,6 +87,7 @@ class ProductoController extends Controller
             'especificaciones' => 'nullable|string',
             'marca'            => 'nullable|string|max:100',
             'color'            => 'nullable|string|max:50',
+            'grupo_variante'   => 'nullable|string|max:100',
             'proveedor_id'     => 'required|exists:proveedores,id',
             'precio_compra'    => 'required|numeric|min:0',
             'precio_venta'     => 'required|numeric|min:0',
@@ -92,6 +101,9 @@ class ProductoController extends Controller
             'garantia'         => 'nullable|string|max:50',
             'categorias'       => 'required|array',
             'categorias.*'     => 'exists:categorias,id',
+            'atributos'        => 'nullable|array',
+            'atributos.*.nombre' => 'required_with:atributos|string|max:100',
+            'atributos.*.valor'  => 'required_with:atributos|string|max:200',
         ]);
 
         if ($validator->fails()) {
@@ -101,13 +113,22 @@ class ProductoController extends Controller
             ], 422);
         }
 
-        $producto = Producto::create($request->except('categorias'));
+        $producto = Producto::create($request->except(['categorias', 'atributos']));
 
         if ($request->has('categorias')) {
             $producto->categorias()->sync($request->categorias);
         }
 
-        $producto->load(['proveedor', 'categorias']);
+        $atributos = array_filter($request->get('atributos', []), fn($a) => !empty($a['nombre']) && $a['valor'] !== '');
+        foreach ($atributos as $attr) {
+            $producto->atributos()->create(['nombre' => $attr['nombre'], 'valor' => $attr['valor']]);
+        }
+
+        if (!empty($atributos) && !$producto->grupo_variante) {
+            $producto->update(['grupo_variante' => 'gv-' . $producto->id]);
+        }
+
+        $producto->load(['proveedor', 'categorias', 'atributos']);
 
         return response()->json([
             'message'  => 'Producto creado exitosamente',
@@ -117,7 +138,7 @@ class ProductoController extends Controller
 
     public function show(string $id)
     {
-        $producto = Producto::with(['proveedor', 'categorias', 'imagenes'])->find($id);
+        $producto = Producto::with(['proveedor', 'categorias', 'imagenes', 'atributos'])->find($id);
 
         if (!$producto) {
             return response()->json(['message' => 'Producto no encontrado'], 404);
@@ -141,6 +162,7 @@ class ProductoController extends Controller
             'especificaciones' => 'nullable|string',
             'marca'            => 'nullable|string|max:100',
             'color'            => 'nullable|string|max:50',
+            'grupo_variante'   => 'nullable|string|max:100',
             'proveedor_id'     => 'sometimes|exists:proveedores,id',
             'precio_compra'    => 'sometimes|numeric|min:0',
             'precio_venta'     => 'sometimes|numeric|min:0',
@@ -154,6 +176,9 @@ class ProductoController extends Controller
             'garantia'         => 'nullable|string|max:50',
             'categorias'       => 'sometimes|array',
             'categorias.*'     => 'exists:categorias,id',
+            'atributos'        => 'nullable|array',
+            'atributos.*.nombre' => 'required_with:atributos|string|max:100',
+            'atributos.*.valor'  => 'required_with:atributos|string|max:200',
         ]);
 
         if ($validator->fails()) {
@@ -163,13 +188,21 @@ class ProductoController extends Controller
             ], 422);
         }
 
-        $producto->update($request->except('categorias'));
+        $producto->update($request->except(['categorias', 'atributos']));
 
         if ($request->has('categorias')) {
             $producto->categorias()->sync($request->categorias);
         }
 
-        $producto->load(['proveedor', 'categorias']);
+        if ($request->has('atributos')) {
+            $producto->atributos()->delete();
+            $atributos = array_filter($request->atributos ?? [], fn($a) => !empty($a['nombre']) && $a['valor'] !== '');
+            foreach ($atributos as $attr) {
+                $producto->atributos()->create(['nombre' => $attr['nombre'], 'valor' => $attr['valor']]);
+            }
+        }
+
+        $producto->load(['proveedor', 'categorias', 'atributos']);
 
         return response()->json([
             'message'  => 'Producto actualizado exitosamente',

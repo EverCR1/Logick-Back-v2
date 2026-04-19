@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use App\Traits\Auditable;
 use App\Models\VentaDetalle;
+use App\Models\ProductoAtributo;
 
 class Producto extends Model
 {
@@ -40,6 +41,11 @@ class Producto extends Model
     public function imagenes()
     {
         return $this->hasMany(ImagenProducto::class);
+    }
+
+    public function atributos()
+    {
+        return $this->hasMany(ProductoAtributo::class);
     }
 
     public function imagenPrincipal()

@@ -12,7 +12,7 @@ class Pedido extends Model
         'numero_pedido',
         'nombre', 'telefono', 'email', 'cliente_id',
         'cuenta_id', 'cupon_id', 'descuento_cupon', 'puntos_ganados',
-        'departamento', 'municipio', 'direccion', 'referencias',
+        'departamento', 'municipio', 'direccion', 'referencias', 'tipo_entrega',
         'metodo_pago', 'estado',
         'subtotal', 'costo_envio', 'total',
         'notas', 'notas_internas',

@@ -151,6 +151,15 @@ class AdminPedidoController extends Controller
 
         $pedido->update(['estado' => $estadoNuevo]);
 
+        // Restaurar stock al cancelar (solo si antes no estaba ya cancelado)
+        if ($estadoNuevo === 'cancelado' && $estadoAnterior !== 'cancelado') {
+            $pedido->load('detalles');
+            foreach ($pedido->detalles as $detalle) {
+                \App\Models\Producto::where('id', $detalle->producto_id)
+                    ->increment('stock', $detalle->cantidad);
+            }
+        }
+
         // Gestión de puntos por compra
         if ($pedido->cuenta_id) {
             if ($estadoNuevo === 'entregado' && $estadoAnterior !== 'entregado') {

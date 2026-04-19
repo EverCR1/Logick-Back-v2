@@ -16,6 +16,7 @@ use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\SucursalController;
 use App\Http\Controllers\AdminPedidoController;
 use App\Http\Controllers\AdminResenaController;
+use App\Http\Controllers\AdminReporteController;
 use App\Http\Controllers\AdminCuponController;
 use App\Http\Controllers\CuentaPuntosController;
 use App\Http\Controllers\Tienda\ProductoController        as TiendaProductoController;
@@ -28,6 +29,8 @@ use App\Http\Controllers\Tienda\CuentaPedidoController    as TiendaCuentaPedidoC
 use App\Http\Controllers\Tienda\CuponController           as TiendaCuponController;
 use App\Http\Controllers\Tienda\ResenaController          as TiendaResenaController;
 use App\Http\Controllers\Tienda\PreguntaController        as TiendaPreguntaController;
+use App\Http\Controllers\Tienda\SucursalController        as TiendaSucursalController;
+use App\Http\Controllers\Tienda\ReporteController         as TiendaReporteController;
 
 /*
 |--------------------------------------------------------------------------
@@ -47,7 +50,10 @@ Route::prefix('tienda')->group(function () {
     Route::get('/productos/ofertas',     [TiendaProductoController::class, 'ofertas']);
     Route::get('/productos/{id}',        [TiendaProductoController::class, 'show']);
 
-    // Reseñas y preguntas (públicas)
+    // Sucursales activas (para checkout)
+    Route::get('/sucursales', [TiendaSucursalController::class, 'index']);
+
+    // Rese&#241;as y preguntas (p&#250;blicas)
     Route::get('/productos/{id}/resenas',   [TiendaResenaController::class,  'index']);
     Route::get('/productos/{id}/preguntas', [TiendaPreguntaController::class, 'index']);
 
@@ -70,6 +76,10 @@ Route::prefix('tienda')->group(function () {
         Route::get('/google',             [TiendaCuentaAuthController::class, 'googleRedirect']);
         Route::get('/google/callback',    [TiendaCuentaAuthController::class, 'googleCallback']);
     });
+
+    // Reportes de problemas (público — cuenta opcional)
+    Route::get('/reportes/categorias', [TiendaReporteController::class, 'categorias']);
+    Route::post('/reportes',           [TiendaReporteController::class, 'store']);
 
     // Cupones (público — token opcional para validaciones extra)
     Route::post('/cupones/validar', [TiendaCuponController::class, 'validar']);
@@ -103,6 +113,9 @@ Route::prefix('tienda')->group(function () {
 
         // Cupones de la cuenta
         Route::get('/cupones', [TiendaCuponController::class, 'misCupones']);
+
+        // Reportes de la cuenta
+        Route::get('/reportes', [TiendaReporteController::class, 'miReportes']);
 
         // Puntos
         Route::get('/puntos',          [CuentaPuntosController::class, 'index']);
@@ -256,6 +269,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/resenas/{id}/estado', [AdminResenaController::class, 'cambiarEstado']);
         Route::get('/preguntas',             [AdminResenaController::class, 'preguntasIndex']);
         Route::patch('/preguntas/{id}',      [AdminResenaController::class, 'preguntaUpdate']);
+
+        // Reportes de problemas
+        Route::get('/reportes',        [AdminReporteController::class, 'index']);
+        Route::get('/reportes/{id}',   [AdminReporteController::class, 'show']);
+        Route::patch('/reportes/{id}', [AdminReporteController::class, 'update']);
     });
 
     // Reportes (solo administrador)
