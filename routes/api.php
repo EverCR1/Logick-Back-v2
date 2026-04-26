@@ -73,6 +73,7 @@ Route::prefix('tienda')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('/registro',          [TiendaCuentaAuthController::class, 'registro']);
         Route::post('/login',             [TiendaCuentaAuthController::class, 'login']);
+        Route::post('/google/verify',     [TiendaCuentaAuthController::class, 'googleVerify']);
         Route::get('/google',             [TiendaCuentaAuthController::class, 'googleRedirect']);
         Route::get('/google/callback',    [TiendaCuentaAuthController::class, 'googleCallback']);
     });

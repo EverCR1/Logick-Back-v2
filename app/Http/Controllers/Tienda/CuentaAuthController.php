@@ -164,7 +164,85 @@ class CuentaAuthController extends Controller
     // ── Google OAuth ───────────────────────────────────────────────────────────
 
     /**
-     * Redirige a Google para autenticación.
+     * Intercambia un authorization code de Google (flujo popup) por un token Sanctum.
+     * POST /tienda/auth/google/verify
+     */
+    public function googleVerify(Request $request): JsonResponse
+    {
+        $request->validate(['code' => 'required|string']);
+
+        // Intercambiar el code por tokens con Google
+        $tokenResponse = \Illuminate\Support\Facades\Http::post('https://oauth2.googleapis.com/token', [
+            'code'          => $request->input('code'),
+            'client_id'     => config('services.google.client_id'),
+            'client_secret' => config('services.google.client_secret'),
+            'redirect_uri'  => 'postmessage',
+            'grant_type'    => 'authorization_code',
+        ]);
+
+        if (!$tokenResponse->successful()) {
+            return response()->json(['success' => false, 'message' => 'No se pudo verificar con Google.'], 401);
+        }
+
+        $accessToken = $tokenResponse->json('access_token');
+
+        // Obtener datos del usuario
+        $userResponse = \Illuminate\Support\Facades\Http::withToken($accessToken)
+            ->get('https://www.googleapis.com/oauth2/v3/userinfo');
+
+        if (!$userResponse->successful()) {
+            return response()->json(['success' => false, 'message' => 'No se pudo obtener el perfil de Google.'], 401);
+        }
+
+        $payload  = $userResponse->json();
+        $googleId = $payload['sub'] ?? null;
+        $email    = $payload['email'] ?? null;
+        $nombre   = $payload['given_name'] ?? null;
+        $apellido = $payload['family_name'] ?? null;
+        $avatar   = $payload['picture'] ?? null;
+
+        if (!$email || !$googleId) {
+            return response()->json(['success' => false, 'message' => 'No se pudo obtener el perfil de Google.'], 422);
+        }
+
+        $cuenta = Cuenta::where('google_id', $googleId)->first()
+               ?? Cuenta::where('email', $email)->first();
+
+        if ($cuenta) {
+            if (!$cuenta->google_id) {
+                $cuenta->update(['google_id' => $googleId]);
+            }
+
+            if ($cuenta->estado !== 'activo') {
+                return response()->json(['success' => false, 'message' => 'Tu cuenta está suspendida.'], 403);
+            }
+        } else {
+            if (!$nombre) {
+                [$nombre, $apellido] = $this->splitNombre($payload['name'] ?? null);
+            }
+
+            $cuenta = Cuenta::create([
+                'nombre'            => $nombre ?? 'Usuario',
+                'apellido'          => $apellido ?? '',
+                'email'             => $email,
+                'google_id'         => $googleId,
+                'avatar'            => $avatar,
+                'email_verified_at' => now(),
+                'estado'            => 'activo',
+            ]);
+        }
+
+        $token = $cuenta->createToken('tienda-google')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'token'   => $token,
+            'cuenta'  => $this->formatearCuenta($cuenta),
+        ]);
+    }
+
+    /**
+     * Redirige a Google para autenticación (flujo legacy vía API).
      * GET /tienda/auth/google
      */
     public function googleRedirect()
