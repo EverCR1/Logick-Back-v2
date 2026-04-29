@@ -36,7 +36,7 @@ class Credito extends Model
 
     public function pagos()
     {
-        return $this->hasMany(PagoCredito::class);
+        return $this->hasMany(PagoCredito::class)->orderBy('fecha_pago', 'asc');
     }
 
     public function scopeActivos($query)    { return $query->where('estado', 'activo'); }
@@ -51,7 +51,7 @@ class Credito extends Model
         return 0;
     }
 
-    public function registrarPago($monto, $tipo = 'abono', $observaciones = null): PagoCredito
+    public function registrarPago($monto, $tipo = 'abono', $observaciones = null, $fechaPago = null): PagoCredito
     {
         if ($tipo === 'pago_total') {
             $this->capital_restante      = 0;
@@ -69,7 +69,7 @@ class Credito extends Model
             }
         }
 
-        $this->fecha_ultimo_pago = now();
+        $this->fecha_ultimo_pago = $fechaPago ?? now();
         $this->save();
 
         if ($this->estado === 'pagado' && $this->venta_id) {
@@ -81,7 +81,7 @@ class Credito extends Model
         return PagoCredito::create([
             'credito_id'    => $this->id,
             'monto'         => $monto,
-            'fecha_pago'    => now(),
+            'fecha_pago'    => $fechaPago ?? now(),
             'tipo'          => $tipo,
             'observaciones' => $observaciones,
         ]);

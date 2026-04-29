@@ -179,6 +179,7 @@ class CreditoController extends Controller
                 'monto'         => 'required|numeric|min:0.01',
                 'tipo'          => 'required|in:abono,pago_total',
                 'observaciones' => 'nullable|string',
+                'fecha_pago'    => 'nullable|date',
             ]);
 
             if ($validator->fails()) {
@@ -197,8 +198,9 @@ class CreditoController extends Controller
                 ], 422);
             }
 
-            $monto = $request->tipo === 'pago_total' ? $credito->capital_restante : $request->monto;
-            $pago  = $credito->registrarPago($monto, $request->tipo, $request->observaciones);
+            $monto     = $request->tipo === 'pago_total' ? $credito->capital_restante : $request->monto;
+            $fechaPago = $request->filled('fecha_pago') ? $request->fecha_pago : null;
+            $pago      = $credito->registrarPago($monto, $request->tipo, $request->observaciones, $fechaPago);
 
             return response()->json([
                 'success' => true,
