@@ -452,6 +452,7 @@ class VentaController extends Controller
                     'stock'  => $p->stock,
                     'marca'  => $p->marca,
                     'tipo'   => 'producto',
+                    'imagen' => $this->imagenPrincipalVenta($p),
                 ]);
 
             return response()->json(['success' => true, 'productos' => $productos, 'message' => 'Productos encontrados']);
@@ -467,7 +468,8 @@ class VentaController extends Controller
             $query = $request->get('query', '');
             $limit = $request->get('limit', 10);
 
-            $servicios = Servicio::where('estado', 'activo')
+            $servicios = Servicio::with('imagenes')
+                ->where('estado', 'activo')
                 ->where(fn($q) => $q
                     ->where('nombre',     'LIKE', "%{$query}%")
                     ->orWhere('codigo',   'LIKE', "%{$query}%")
@@ -481,6 +483,7 @@ class VentaController extends Controller
                     'nombre' => $s->nombre,
                     'precio' => $s->precio_oferta ?? $s->precio_venta,
                     'tipo'   => 'servicio',
+                    'imagen' => $this->imagenPrincipalServicioVenta($s),
                 ]);
 
             return response()->json(['success' => true, 'servicios' => $servicios, 'message' => 'Servicios encontrados']);
@@ -488,6 +491,20 @@ class VentaController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error al buscar servicios'], 500);
         }
+    }
+
+    private function imagenPrincipalVenta($producto): ?string
+    {
+        if ($producto->imagenes->isEmpty()) return null;
+        $img = $producto->imagenes->firstWhere('es_principal', true) ?? $producto->imagenes->first();
+        return $img->url_thumb ?? $img->url_medium ?? $img->url ?? null;
+    }
+
+    private function imagenPrincipalServicioVenta($servicio): ?string
+    {
+        if ($servicio->imagenes->isEmpty()) return null;
+        $img = $servicio->imagenes->first();
+        return $img->url_thumb ?? $img->url_medium ?? $img->url ?? null;
     }
 
     public function buscarClientes(Request $request)
@@ -831,6 +848,8 @@ class VentaController extends Controller
     private function obtenerEstadisticas($baseQuery = null): array
     {
         $base = $baseQuery ?? Venta::query();
+        $tz   = 'America/Guatemala';
+        $now  = now($tz);
 
         return [
             'total_monto' => (float) (clone $base)->sum('total'),
@@ -838,6 +857,20 @@ class VentaController extends Controller
             'completadas' => (clone $base)->where('estado', 'completada')->count(),
             'pendientes'  => (clone $base)->where('estado', 'pendiente')->count(),
             'canceladas'  => (clone $base)->where('estado', 'cancelada')->count(),
+            'totales'     => [
+                'hoy'    => [
+                    'ventas' => (clone $base)->whereDate('created_at', $now->toDateString())->count(),
+                    'total'  => (float) (clone $base)->whereDate('created_at', $now->toDateString())->sum('total'),
+                ],
+                'semana' => [
+                    'ventas' => (clone $base)->whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()])->count(),
+                    'total'  => (float) (clone $base)->whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()])->sum('total'),
+                ],
+                'mes'    => [
+                    'ventas' => (clone $base)->whereYear('created_at', $now->year)->whereMonth('created_at', $now->month)->count(),
+                    'total'  => (float) (clone $base)->whereYear('created_at', $now->year)->whereMonth('created_at', $now->month)->sum('total'),
+                ],
+            ],
         ];
     }
 }

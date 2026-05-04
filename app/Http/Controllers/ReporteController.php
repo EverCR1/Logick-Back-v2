@@ -19,18 +19,21 @@ class ReporteController extends Controller
     public function resumen()
     {
         try {
+            $tz  = 'America/Guatemala';
+            $now = now($tz);
+
             $data = [
                 'ventas'    => [
-                    'hoy'            => Venta::whereDate('created_at', today())->sum('total'),
-                    'semana'         => Venta::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->sum('total'),
-                    'mes'            => Venta::whereMonth('created_at', now()->month)->sum('total'),
+                    'hoy'            => Venta::whereDate('created_at', $now->toDateString())->sum('total'),
+                    'semana'         => Venta::whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()])->sum('total'),
+                    'mes'            => Venta::whereYear('created_at', $now->year)->whereMonth('created_at', $now->month)->sum('total'),
                     'total'          => Venta::sum('total'),
                     'promedio_diario'=> Venta::avg('total') ?? 0,
                 ],
                 'clientes'  => [
                     'total'      => Cliente::count(),
                     'activos'    => Cliente::where('estado', 'activo')->count(),
-                    'nuevos_mes' => Cliente::whereMonth('created_at', now()->month)->count(),
+                    'nuevos_mes' => Cliente::whereYear('created_at', $now->year)->whereMonth('created_at', $now->month)->count(),
                     'con_ventas' => Cliente::has('ventas')->count(),
                 ],
                 'productos' => [
