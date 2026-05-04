@@ -18,39 +18,50 @@ class VentaController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Venta::with(['detalles', 'cliente', 'usuario']);
+            $query     = Venta::with(['detalles', 'cliente', 'usuario']);
+            $statsBase = Venta::query();
 
             if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('numero_venta', 'LIKE', "%{$search}%")
-                      ->orWhereHas('cliente',  fn($q2) => $q2->where('nombre', 'LIKE', "%{$search}%")->orWhere('nit', 'LIKE', "%{$search}%"))
-                      ->orWhereHas('detalles', fn($q2) => $q2->where('descripcion', 'LIKE', "%{$search}%"));
-                });
+                $search      = $request->search;
+                $applySearch = function ($q) use ($search) {
+                    $q->where(function ($inner) use ($search) {
+                        $inner->where('numero_venta', 'LIKE', "%{$search}%")
+                              ->orWhereHas('cliente',  fn($q2) => $q2->where('nombre', 'LIKE', "%{$search}%")->orWhere('nit', 'LIKE', "%{$search}%"))
+                              ->orWhereHas('detalles', fn($q2) => $q2->where('descripcion', 'LIKE', "%{$search}%"));
+                    });
+                };
+                $applySearch($query);
+                $applySearch($statsBase);
             }
 
             if ($request->filled('estado') && $request->estado !== 'todos') {
                 $query->where('estado', $request->estado);
+                $statsBase->where('estado', $request->estado);
             }
 
             if ($request->filled('metodo_pago') && $request->metodo_pago !== 'todos') {
                 $query->where('metodo_pago', $request->metodo_pago);
+                $statsBase->where('metodo_pago', $request->metodo_pago);
             }
 
             if ($request->filled('fecha_inicio')) {
                 $query->whereDate('created_at', '>=', $request->fecha_inicio);
+                $statsBase->whereDate('created_at', '>=', $request->fecha_inicio);
             }
 
             if ($request->filled('fecha_fin')) {
                 $query->whereDate('created_at', '<=', $request->fecha_fin);
+                $statsBase->whereDate('created_at', '<=', $request->fecha_fin);
             }
 
             if ($request->filled('monto_min')) {
                 $query->where('total', '>=', $request->monto_min);
+                $statsBase->where('total', '>=', $request->monto_min);
             }
 
             if ($request->filled('monto_max')) {
                 $query->where('total', '<=', $request->monto_max);
+                $statsBase->where('total', '<=', $request->monto_max);
             }
 
             match ($request->get('sort', 'fecha_desc')) {
@@ -62,13 +73,12 @@ class VentaController extends Controller
 
             $ventas = $query->paginate($request->get('per_page', 20));
 
-            $response = ['success' => true, 'ventas' => $ventas, 'message' => 'Filtrado exitoso'];
-
-            if ($request->boolean('estadisticas')) {
-                $response['estadisticas'] = $this->obtenerEstadisticas();
-            }
-
-            return response()->json($response);
+            return response()->json([
+                'success'      => true,
+                'ventas'       => $ventas,
+                'estadisticas' => $this->obtenerEstadisticas($statsBase),
+                'message'      => 'Filtrado exitoso',
+            ]);
 
         } catch (\Exception $e) {
             Log::error('Error filtrando ventas: ' . $e->getMessage());
@@ -818,38 +828,16 @@ class VentaController extends Controller
         }
     }
 
-    private function obtenerEstadisticas(): array
+    private function obtenerEstadisticas($baseQuery = null): array
     {
-        $hoy    = Venta::completadas()->hoy();
-        $semana = Venta::completadas()->estaSemana();
-        $mes    = Venta::completadas()->esteMes();
-
-        $metodosPago = Venta::completadas()
-            ->select('metodo_pago', DB::raw('COUNT(*) as cantidad'), DB::raw('SUM(total) as total'))
-            ->groupBy('metodo_pago')
-            ->get();
-
-        $topProductos = VentaDetalle::whereHas('venta', fn($q) => $q->where('estado', 'completada'))
-            ->where('tipo', 'producto')->whereNotNull('producto_id')
-            ->select('producto_id', DB::raw('SUM(cantidad) as total_vendido'), DB::raw('SUM(total) as total_ingreso'))
-            ->with('producto:id,nombre')
-            ->groupBy('producto_id')->orderBy('total_vendido', 'desc')->limit(5)->get();
-
-        $topServicios = VentaDetalle::whereHas('venta', fn($q) => $q->where('estado', 'completada'))
-            ->where('tipo', 'servicio')->whereNotNull('servicio_id')
-            ->select('servicio_id', DB::raw('COUNT(*) as total_vendido'), DB::raw('SUM(total) as total_ingreso'))
-            ->with('servicio:id,nombre')
-            ->groupBy('servicio_id')->orderBy('total_vendido', 'desc')->limit(5)->get();
+        $base = $baseQuery ?? Venta::query();
 
         return [
-            'totales'      => [
-                'hoy'    => ['ventas' => $hoy->count(),    'total' => $hoy->sum('total')],
-                'semana' => ['ventas' => $semana->count(), 'total' => $semana->sum('total')],
-                'mes'    => ['ventas' => $mes->count(),    'total' => $mes->sum('total')],
-            ],
-            'metodos_pago' => $metodosPago,
-            'top_productos'=> $topProductos,
-            'top_servicios'=> $topServicios,
+            'total_monto' => (float) (clone $base)->sum('total'),
+            'count'       => (clone $base)->count(),
+            'completadas' => (clone $base)->where('estado', 'completada')->count(),
+            'pendientes'  => (clone $base)->where('estado', 'pendiente')->count(),
+            'canceladas'  => (clone $base)->where('estado', 'cancelada')->count(),
         ];
     }
 }

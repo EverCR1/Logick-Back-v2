@@ -19,25 +19,50 @@ class AdminPedidoController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Pedido::with(['cuenta:id,nombre,apellido,email', 'detalles'])
-            ->orderBy('created_at', 'desc');
+        $query      = Pedido::with(['cuenta:id,nombre,apellido,email', 'detalles'])->orderBy('created_at', 'desc');
+        $countQuery = Pedido::query();
+
+        if ($request->filled('search')) {
+            $q     = $request->search;
+            $apply = function ($b) use ($q) {
+                $b->where(function ($q2) use ($q) {
+                    $q2->where('numero_pedido', 'LIKE', "%{$q}%")
+                       ->orWhere('email', 'LIKE', "%{$q}%")
+                       ->orWhere('nombre', 'LIKE', "%{$q}%");
+                });
+            };
+            $apply($query);
+            $apply($countQuery);
+        }
 
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
         }
 
-        if ($request->filled('search')) {
-            $q = $request->search;
-            $query->where(function ($q2) use ($q) {
-                $q2->where('numero_pedido', 'LIKE', "%{$q}%")
-                   ->orWhere('email', 'LIKE', "%{$q}%")
-                   ->orWhere('nombre', 'LIKE', "%{$q}%");
-            });
-        }
+        $pedidos  = $query->paginate($request->get('per_page', 20));
+        $byEstado = $countQuery->selectRaw('estado, COUNT(*) as cnt')->groupBy('estado')->pluck('cnt', 'estado');
 
-        $pedidos = $query->paginate($request->get('per_page', 20));
+        $p = (int) ($byEstado['pendiente']      ?? 0);
+        $c = (int) ($byEstado['confirmado']     ?? 0);
+        $r = (int) ($byEstado['en_preparacion'] ?? 0);
+        $e = (int) ($byEstado['enviado']        ?? 0);
+        $n = (int) ($byEstado['entregado']      ?? 0);
+        $x = (int) ($byEstado['cancelado']      ?? 0);
 
-        return response()->json(['success' => true, 'pedidos' => $pedidos]);
+        return response()->json([
+            'success' => true,
+            'pedidos' => $pedidos,
+            'counts'  => [
+                'total'          => $p + $c + $r + $e + $n + $x,
+                'activos'        => $p + $c + $r + $e,
+                'entregado'      => $n,
+                'cancelado'      => $x,
+                'pendiente'      => $p,
+                'confirmado'     => $c,
+                'en_preparacion' => $r,
+                'enviado'        => $e,
+            ],
+        ]);
     }
 
     /**

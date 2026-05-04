@@ -3,7 +3,20 @@
     "allow": [
       "Read(//c/Users/Pc/.claude/projects/c--Users-Pc-Desktop-Code-Logick-Logick-Back/memory/**)",
       "Read(//c/Users/Pc/Desktop/Code Logick/**)",
-      "Bash(ls \"C:/Users/Pc/Desktop/Code Logick/Logick-Back-v2/database/migrations/2026_04_10\"*)"
+      "Bash(ls \"C:/Users/Pc/Desktop/Code Logick/Logick-Back-v2/database/migrations/2026_04_10\"*)",
+      "Bash(xargs grep *)",
+      "Bash(grep -n \"Log::\\\\|\\\\\\\\\\\\\\\\Log::\" \"C:/Users/Pc/Desktop/Code Logick/Logick-Dash-v2/app/Http/Controllers/ClienteController.php\")",
+      "Read(//c/Users/Pc/.claude/projects/c--Users-Pc-Desktop-Code-Logick-Logick-Back-v2/**)",
+      "Bash(node -e ' *)",
+      "Bash(grep -rn 'transformPaginationLinks\\\\|preg_match.*page.*$m' 'C:/Users/Pc/Desktop/Code Logick/Logick-Dash-v2/app/Http/Controllers' '--include=*.php' -l)",
+      "Bash(grep -n \"Log::info\\\\|Log::warning\\\\|\\\\\\\\\\\\\\\\Log::\" \"C:/Users/Pc/Desktop/Code Logick/Logick-Dash-v2/app/Http/Controllers/AuthController.php\")",
+      "Bash(grep -n \"Log::info\\\\|\\\\\\\\\\\\\\\\Log::info\" \"C:/Users/Pc/Desktop/Code Logick/Logick-Dash-v2/app/Http/Middleware/CheckRole.php\")",
+      "Bash(grep -c \"Log::info\\\\|\\\\\\\\\\\\\\\\Log::info\" \"C:/Users/Pc/Desktop/Code Logick/Logick-Dash-v2/app/Http/Controllers/ProductoController.php\" \"C:/Users/Pc/Desktop/Code Logick/Logick-Dash-v2/app/Http/Controllers/ServicioController.php\" \"C:/Users/Pc/Desktop/Code Logick/Logick-Dash-v2/app/Http/Controllers/UserController.php\" \"C:/Users/Pc/Desktop/Code Logick/Logick-Dash-v2/app/Http/Controllers/VentaController.php\")",
+      "Bash(Get-Content \"C:\\\\Users\\\\Pc\\\\Desktop\\\\Code Logick\\\\Logick-Dash-v2\\\\storage\\\\logs\\\\laravel.log\" -Tail 60)",
+      "Bash(python3 -c ' *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Pc\\\\Desktop\\\\Code Logick\\\\Logick-Dash-v2\\\\resources\\\\views\\\\creditos\" -Recurse -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object FullName)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Pc\\\\Desktop\\\\Code Logick\\\\logick-store\\\\src\" -Recurse -Filter \"*search*\" -ErrorAction SilentlyContinue)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Pc\\Desktop\\Code Logick\\Logick-Dash-v2\\app\\Services",
@@ -12,7 +25,8 @@
       "C:\\Users\\Pc\\Desktop\\Code Logick\\Logick-Dash-v2\\routes",
       "C:\\Users\\Pc\\Desktop\\Code Logick\\logick-store\\src\\app\\cuenta\\pedidos",
       "C:\\Users\\Pc\\Desktop\\Code Logick\\logick-store\\src\\components\\layout",
-      "C:\\Users\\Pc\\Desktop\\Code Logick\\logick-store\\src\\app"
+      "C:\\Users\\Pc\\Desktop\\Code Logick\\logick-store\\src\\app",
+      "C:\\Users\\Pc\\Desktop\\Code Logick\\logick-store\\src\\lib"
     ]
   }
 }

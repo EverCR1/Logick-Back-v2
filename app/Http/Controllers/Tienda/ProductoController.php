@@ -180,6 +180,7 @@ class ProductoController extends Controller
                     'id'           => $p->id,
                     'nombre'       => $p->nombre,
                     'marca'        => $p->marca,
+                    'color'        => $p->color,
                     'precio_final' => $p->precio_final,
                     'en_oferta'    => !is_null($p->precio_oferta),
                     'disponible'   => $p->stock > 0,

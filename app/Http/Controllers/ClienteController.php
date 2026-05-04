@@ -33,9 +33,24 @@ class ClienteController extends Controller
                 $query->where('tipo', $request->tipo);
             }
 
-            $clientes = $query->orderBy('nombre')->paginate($request->get('per_page', 20));
+            $countQuery = clone $query;
+            $clientes   = $query->orderBy('nombre')->paginate($request->get('per_page', 20));
+            $total      = $clientes->total();
 
-            return response()->json(['success' => true, 'clientes' => $clientes, 'message' => 'Filtrado exitoso']);
+            $activos   = (clone $countQuery)->where('estado', 'activo')->count();
+            $naturales = (clone $countQuery)->where('tipo', 'natural')->count();
+
+            return response()->json([
+                'success'  => true,
+                'clientes' => $clientes,
+                'counts'   => [
+                    'activos'   => $activos,
+                    'inactivos' => $total - $activos,
+                    'naturales' => $naturales,
+                    'juridicos' => $total - $naturales,
+                ],
+                'message'  => 'Filtrado exitoso',
+            ]);
 
         } catch (\Exception $e) {
             Log::error('Error filtrando clientes: ' . $e->getMessage());

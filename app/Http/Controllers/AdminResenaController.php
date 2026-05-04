@@ -21,13 +21,29 @@ class AdminResenaController extends Controller
         $query = Resena::with(['cuenta:id,nombre,apellido,email', 'producto:id,nombre,precio_venta'])
             ->orderBy('created_at', 'desc');
 
+        $countQuery = clone $query;
+
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
         }
 
-        $resenas = $query->paginate($request->get('per_page', 20));
+        $resenas  = $query->paginate($request->get('per_page', 20));
+        $byEstado = $countQuery->reorder()->selectRaw('estado, COUNT(*) as cnt')->groupBy('estado')->pluck('cnt', 'estado');
 
-        return response()->json(['success' => true, 'resenas' => $resenas]);
+        $pend = (int) ($byEstado['pendiente'] ?? 0);
+        $pub  = (int) ($byEstado['publicado'] ?? 0);
+        $rech = (int) ($byEstado['rechazado'] ?? 0);
+
+        return response()->json([
+            'success' => true,
+            'resenas' => $resenas,
+            'counts'  => [
+                'total'     => $pend + $pub + $rech,
+                'pendiente' => $pend,
+                'publicado' => $pub,
+                'rechazado' => $rech,
+            ],
+        ]);
     }
 
     /**
@@ -76,13 +92,29 @@ class AdminResenaController extends Controller
         $query = ProductoPregunta::with(['cuenta:id,nombre,apellido', 'producto:id,nombre'])
             ->orderBy('created_at', 'desc');
 
+        $countQuery = clone $query;
+
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
         }
 
         $preguntas = $query->paginate($request->get('per_page', 20));
+        $byEstado  = $countQuery->reorder()->selectRaw('estado, COUNT(*) as cnt')->groupBy('estado')->pluck('cnt', 'estado');
 
-        return response()->json(['success' => true, 'preguntas' => $preguntas]);
+        $pend = (int) ($byEstado['pendiente']  ?? 0);
+        $resp = (int) ($byEstado['respondida'] ?? 0);
+        $rech = (int) ($byEstado['rechazada']  ?? 0);
+
+        return response()->json([
+            'success'   => true,
+            'preguntas' => $preguntas,
+            'counts'    => [
+                'total'      => $pend + $resp + $rech,
+                'pendiente'  => $pend,
+                'respondida' => $resp,
+                'rechazada'  => $rech,
+            ],
+        ]);
     }
 
     /**

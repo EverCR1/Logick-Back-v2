@@ -63,6 +63,29 @@ class UserController extends Controller
             'telefono'    => 'nullable|string|max:20',
             'direccion'   => 'nullable|string|max:255',
             'sucursal_id' => 'nullable|exists:sucursales,id',
+        ], [
+            'nombres.required'   => 'El campo nombres es obligatorio.',
+            'nombres.max'        => 'El nombre no puede superar 100 caracteres.',
+            'apellidos.required' => 'El campo apellidos es obligatorio.',
+            'apellidos.max'      => 'Los apellidos no pueden superar 100 caracteres.',
+            'email.required'     => 'El correo electrónico es obligatorio.',
+            'email.email'        => 'Ingresa un correo electrónico válido.',
+            'email.max'          => 'El correo no puede superar 100 caracteres.',
+            'email.unique'       => 'Este correo electrónico ya está registrado.',
+            'username.required'  => 'El nombre de usuario es obligatorio.',
+            'username.max'       => 'El nombre de usuario no puede superar 50 caracteres.',
+            'username.unique'    => 'Este nombre de usuario ya está en uso.',
+            'password.required'  => 'La contraseña es obligatoria.',
+            'password.min'       => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.letters'   => 'La contraseña debe contener al menos una letra.',
+            'password.mixed'     => 'La contraseña debe contener mayúsculas y minúsculas.',
+            'password.numbers'   => 'La contraseña debe contener al menos un número.',
+            'password.symbols'   => 'La contraseña debe contener al menos un símbolo.',
+            'rol.required'       => 'Debes seleccionar un rol.',
+            'rol.in'             => 'El rol seleccionado no es válido.',
+            'estado.required'    => 'El estado es obligatorio.',
+            'estado.in'          => 'El estado debe ser activo o inactivo.',
+            'sucursal_id.exists' => 'La sucursal seleccionada no existe.',
         ]);
 
         if ($validator->fails()) {
@@ -137,6 +160,17 @@ class UserController extends Controller
             'telefono'    => 'nullable|string|max:20',
             'direccion'   => 'nullable|string|max:255',
             'sucursal_id' => 'nullable|exists:sucursales,id',
+        ], [
+            'nombres.max'        => 'El nombre no puede superar 100 caracteres.',
+            'apellidos.max'      => 'Los apellidos no pueden superar 100 caracteres.',
+            'email.email'        => 'Ingresa un correo electrónico válido.',
+            'email.max'          => 'El correo no puede superar 100 caracteres.',
+            'email.unique'       => 'Este correo electrónico ya está registrado.',
+            'username.max'       => 'El nombre de usuario no puede superar 50 caracteres.',
+            'username.unique'    => 'Este nombre de usuario ya está en uso.',
+            'rol.in'             => 'El rol seleccionado no es válido.',
+            'estado.in'          => 'El estado debe ser activo o inactivo.',
+            'sucursal_id.exists' => 'La sucursal seleccionada no existe.',
         ]);
 
         if ($validator->fails()) {
@@ -201,6 +235,9 @@ class UserController extends Controller
 
         $validator = Validator::make($request->all(), [
             'estado' => 'required|in:activo,inactivo',
+        ], [
+            'estado.required' => 'El estado es obligatorio.',
+            'estado.in'       => 'El estado debe ser activo o inactivo.',
         ]);
 
         if ($validator->fails()) {

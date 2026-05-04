@@ -28,12 +28,20 @@ class ProveedorController extends Controller
                 $query->where('estado', $request->estado);
             }
 
+            $countQuery  = clone $query;
             $proveedores = $query->orderBy('nombre')->paginate($request->get('per_page', 20));
+            $total       = $proveedores->total();
+
+            $activos = (clone $countQuery)->where('estado', 'activo')->count();
 
             return response()->json([
                 'success'     => true,
                 'proveedores' => $proveedores,
-                'message'     => 'Filtrado exitoso'
+                'counts'      => [
+                    'activos'   => $activos,
+                    'inactivos' => $total - $activos,
+                ],
+                'message'     => 'Filtrado exitoso',
             ]);
 
         } catch (\Exception $e) {

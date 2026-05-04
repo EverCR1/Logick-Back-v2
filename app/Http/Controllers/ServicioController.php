@@ -66,9 +66,27 @@ class ServicioController extends Controller
                 default          => $query->orderBy('nombre', 'asc'),
             };
 
+            $countQuery = clone $query;
+            $byEstado   = $countQuery->reorder()->selectRaw('estado, COUNT(*) as cnt')->groupBy('estado')->pluck('cnt', 'estado');
+            $activos    = (int) ($byEstado['activo']   ?? 0);
+            $inactivos  = (int) ($byEstado['inactivo'] ?? 0);
+            $enOferta   = (clone $query)->reorder()->whereNotNull('precio_oferta')->whereRaw('precio_oferta > 0')->count();
+            $margenAlto = (clone $query)->reorder()->whereRaw('inversion_estimada > 0 AND ((COALESCE(precio_oferta, precio_venta) - inversion_estimada) / inversion_estimada) >= 1')->count();
+
             $servicios = $query->paginate($request->get('per_page', 20));
 
-            return response()->json(['success' => true, 'servicios' => $servicios, 'message' => 'Filtrado exitoso']);
+            return response()->json([
+                'success'  => true,
+                'servicios'=> $servicios,
+                'counts'   => [
+                    'total'       => $activos + $inactivos,
+                    'activos'     => $activos,
+                    'inactivos'   => $inactivos,
+                    'en_oferta'   => $enOferta,
+                    'margen_alto' => $margenAlto,
+                ],
+                'message'  => 'Filtrado exitoso',
+            ]);
 
         } catch (\Exception $e) {
             Log::error('Error filtrando servicios: ' . $e->getMessage());

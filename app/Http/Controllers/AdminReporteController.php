@@ -16,8 +16,8 @@ class AdminReporteController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = ReporteProblema::with('cuenta:id,nombre,apellido,email')
-            ->orderBy('created_at', 'desc');
+        $query      = ReporteProblema::with('cuenta:id,nombre,apellido,email')->orderBy('created_at', 'desc');
+        $countQuery = ReporteProblema::query();
 
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
@@ -25,6 +25,7 @@ class AdminReporteController extends Controller
 
         if ($request->filled('categoria')) {
             $query->where('categoria', $request->categoria);
+            $countQuery->where('categoria', $request->categoria);
         }
 
         $reportes = $query->paginate($request->get('per_page', 20));
@@ -33,7 +34,24 @@ class AdminReporteController extends Controller
             'categoria_label' => ReporteController::CATEGORIAS[$r->categoria] ?? $r->categoria,
         ]));
 
-        return response()->json(['success' => true, 'reportes' => $reportes]);
+        $byEstado = $countQuery->selectRaw('estado, COUNT(*) as cnt')->groupBy('estado')->pluck('cnt', 'estado');
+
+        $pend = (int) ($byEstado['pendiente']   ?? 0);
+        $rev  = (int) ($byEstado['en_revision'] ?? 0);
+        $res  = (int) ($byEstado['resuelto']    ?? 0);
+        $inv  = (int) ($byEstado['invalido']    ?? 0);
+
+        return response()->json([
+            'success'  => true,
+            'reportes' => $reportes,
+            'counts'   => [
+                'total'       => $pend + $rev + $res + $inv,
+                'pendiente'   => $pend,
+                'en_revision' => $rev,
+                'resuelto'    => $res,
+                'invalido'    => $inv,
+            ],
+        ]);
     }
 
     /**

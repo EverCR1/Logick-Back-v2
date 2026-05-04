@@ -28,10 +28,20 @@ class AdminCuponController extends Controller
             });
         }
 
-        $cupones = $query->orderByDesc('created_at')
-                         ->paginate($request->get('per_page', 20));
+        $countQuery = clone $query;
+        $cupones    = $query->orderByDesc('created_at')->paginate($request->get('per_page', 20));
+        $total      = $cupones->total();
+        $activos    = (clone $countQuery)->where('estado', 'activo')->count();
 
-        return response()->json(['success' => true, 'cupones' => $cupones]);
+        return response()->json([
+            'success' => true,
+            'cupones' => $cupones,
+            'counts'  => [
+                'total'    => $total,
+                'activos'  => $activos,
+                'inactivos' => $total - $activos,
+            ],
+        ]);
     }
 
     /**

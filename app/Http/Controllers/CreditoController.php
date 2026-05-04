@@ -13,18 +13,24 @@ class CreditoController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Credito::with(['pagos', 'venta']);
+            $query     = Credito::with(['pagos', 'venta']);
+            $statsBase = Credito::query();
 
             if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('nombre_cliente',           'LIKE', "%{$search}%")
-                      ->orWhere('producto_o_servicio_dado','LIKE', "%{$search}%");
-                });
+                $search      = $request->search;
+                $applySearch = function ($q) use ($search) {
+                    $q->where(function ($inner) use ($search) {
+                        $inner->where('nombre_cliente',            'LIKE', "%{$search}%")
+                              ->orWhere('producto_o_servicio_dado', 'LIKE', "%{$search}%");
+                    });
+                };
+                $applySearch($query);
+                $applySearch($statsBase);
             }
 
             if ($request->filled('estado') && $request->estado !== 'todos') {
                 $query->where('estado', $request->estado);
+                $statsBase->where('estado', $request->estado);
             }
 
             match ($request->get('sort', 'fecha_desc')) {
@@ -37,10 +43,10 @@ class CreditoController extends Controller
             $creditos = $query->paginate($request->get('per_page', 20));
 
             return response()->json([
-                'success'       => true,
-                'creditos'      => $creditos,
-                'estadisticas'  => $this->obtenerEstadisticas(),
-                'message'       => 'Filtrado exitoso'
+                'success'      => true,
+                'creditos'     => $creditos,
+                'estadisticas' => $this->obtenerEstadisticas($statsBase),
+                'message'      => 'Filtrado exitoso'
             ]);
 
         } catch (\Exception $e) {
@@ -283,26 +289,28 @@ class CreditoController extends Controller
         }
     }
 
-    private function obtenerEstadisticas(): array
+    private function obtenerEstadisticas($baseQuery = null): array
     {
-        $totalActivos  = Credito::activos()->count();
-        $totalAbonados = Credito::abonados()->count();
-        $totalPagados  = Credito::pagados()->count();
+        $base = $baseQuery ?? Credito::query();
 
-        $totalCapitalActivo  = Credito::activos()->sum('capital_restante');
-        $totalCapitalAbonado = Credito::abonados()->sum('capital_restante');
+        $totalActivos  = (clone $base)->where('estado', 'activo')->count();
+        $totalAbonados = (clone $base)->where('estado', 'abonado')->count();
+        $totalPagados  = (clone $base)->where('estado', 'pagado')->count();
 
-        $totalRecuperado = Credito::whereIn('estado', ['abonado', 'pagado'])
+        $totalCapitalActivo  = (clone $base)->where('estado', 'activo')->sum('capital_restante');
+        $totalCapitalAbonado = (clone $base)->where('estado', 'abonado')->sum('capital_restante');
+
+        $totalRecuperado = (clone $base)->whereIn('estado', ['abonado', 'pagado'])
             ->sum(DB::raw('capital - capital_restante'));
 
         return [
-            'total_creditos'           => $totalActivos + $totalAbonados + $totalPagados,
-            'activos'                  => $totalActivos,
-            'abonados'                 => $totalAbonados,
-            'pagados'                  => $totalPagados,
+            'total_creditos'             => $totalActivos + $totalAbonados + $totalPagados,
+            'activos'                    => $totalActivos,
+            'abonados'                   => $totalAbonados,
+            'pagados'                    => $totalPagados,
             'capital_pendiente_activos'  => $totalCapitalActivo,
             'capital_pendiente_abonados' => $totalCapitalAbonado,
-            'total_recuperado'         => $totalRecuperado,
+            'total_recuperado'           => $totalRecuperado,
         ];
     }
 }

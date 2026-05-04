@@ -20,9 +20,6 @@ use Illuminate\Support\Facades\Validator;
 
 class PedidoController extends Controller
 {
-    const COSTO_ENVIO_BASE    = 35.00;
-    const MINIMO_ENVIO_GRATIS = 500.00;
-
     // Métodos que requieren comprobante obligatorio
     const METODOS_CON_COMPROBANTE = ['deposito_transferencia'];
 
@@ -110,7 +107,7 @@ class PedidoController extends Controller
             $tipoEntrega = $request->input('tipo_entrega', 'domicilio');
             $costoEnvio  = $tipoEntrega === 'tienda'
                 ? 0
-                : ($subtotal >= self::MINIMO_ENVIO_GRATIS ? 0 : self::COSTO_ENVIO_BASE);
+                : ($subtotal >= config('tienda.minimo_envio_gratis') ? 0 : config('tienda.costo_envio_base'));
 
             // ── Aplicar cupón (opcional) ──────────────────────────────────
             $cupon          = null;

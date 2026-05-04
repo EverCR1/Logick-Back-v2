@@ -65,9 +65,33 @@ class ProductoController extends Controller
                 default       => $query->orderBy('nombre', 'asc'),
             };
 
+            $countQuery = clone $query;
+            $byEstado   = $countQuery->reorder()
+                ->selectRaw('estado, COUNT(*) as cnt')
+                ->groupBy('estado')
+                ->pluck('cnt', 'estado');
+
+            $activos   = (int) ($byEstado['activo']   ?? 0);
+            $inactivos = (int) ($byEstado['inactivo'] ?? 0);
+            $stockBajo = (clone $query)->reorder()->whereRaw('stock > 0 AND stock <= stock_minimo')->count();
+            $agotados  = (clone $query)->reorder()->where('stock', '<=', 0)->count();
+            $enOferta  = (clone $query)->reorder()->whereNotNull('precio_oferta')->whereRaw('precio_oferta > 0')->count();
+
             $productos = $query->paginate($request->get('per_page', 20));
 
-            return response()->json(['success' => true, 'productos' => $productos, 'message' => 'Filtrado exitoso']);
+            return response()->json([
+                'success'   => true,
+                'productos' => $productos,
+                'counts'    => [
+                    'total'      => $activos + $inactivos,
+                    'activos'    => $activos,
+                    'inactivos'  => $inactivos,
+                    'stock_bajo' => $stockBajo,
+                    'agotados'   => $agotados,
+                    'en_oferta'  => $enOferta,
+                ],
+                'message'   => 'Filtrado exitoso',
+            ]);
 
         } catch (\Exception $e) {
             return response()->json([

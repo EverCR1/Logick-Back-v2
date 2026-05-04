@@ -221,8 +221,7 @@
                                 <td style="padding:14px 16px;">
                                     <p style="margin:0;font-size:13px;font-weight:600;color:#1e40af;">Pago con tarjeta</p>
                                     <p style="margin:4px 0 0;font-size:13px;color:#1d4ed8;line-height:1.5;">
-                                        Nos comunicaremos contigo pronto por WhatsApp al
-                                        <strong>4710 4888</strong> o por correo para enviarte
+                                        Nos comunicaremos contigo pronto por WhatsApp o por correo para enviarte
                                         el enlace de pago seguro.
                                     </p>
                                 </td>
